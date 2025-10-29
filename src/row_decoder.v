@@ -35,12 +35,38 @@ module row_decoder #(
 
     // AND array: Combine predecoder outputs to generate 64 row selects
     // row_select[i] = predec_high[i/8] & predec_low[i%8]
+    wire [NUM_ROWS-1:0] row_select_unbuffered;
+    
     genvar i;
     generate
         for (i = 0; i < NUM_ROWS; i = i + 1) begin : and_array
-            assign row_select[i] = predec_high[i / 8] & predec_low[i % 8];
+            assign row_select_unbuffered[i] = predec_high[i / 8] & predec_low[i % 8];
         end
     endgenerate
+
+    // Buffer chains to drive wordlines (3-stage buffer for strong drive)
+    generate
+        for (i = 0; i < NUM_ROWS; i = i + 1) begin : wordline_drivers
+            wordline_driver wl_driver (
+                .in(row_select_unbuffered[i]),
+                .out(row_select[i])
+            );
+        end
+    endgenerate
+
+endmodule
+
+// Wordline driver: 2-stage inverter chain for strong drive capability
+// Even number of inverters maintains signal polarity (non-inverting buffer)
+module wordline_driver (
+    input  wire in,
+    output wire out
+);
+    wire inv1;
+    
+    // 2-stage inverter chain (inv -> inv = non-inverting buffer with strong drive)
+    assign inv1 = ~in;
+    assign out  = ~inv1;
 
 endmodule
 

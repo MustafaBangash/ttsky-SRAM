@@ -9,7 +9,7 @@ SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = project.v
 
 # Component testing support
-# Usage: make COMPONENT=row_decoder
+# Usage: make COMPONENT=row_decoder | column_decoder | column_mux
 COMPONENT ?= 
 
 ifeq ($(COMPONENT),row_decoder)
@@ -17,6 +17,20 @@ ifeq ($(COMPONENT),row_decoder)
 	TOPLEVEL = tb_row_decoder
 	COCOTB_TEST_MODULES = test_row_decoder
 	SIM_BUILD = sim_build/row_decoder
+endif
+
+ifeq ($(COMPONENT),column_decoder)
+	VERILOG_SOURCES = $(SRC_DIR)/column_decoder.v $(PWD)/tb_column_decoder.v
+	TOPLEVEL = tb_column_decoder
+	COCOTB_TEST_MODULES = test_column_decoder
+	SIM_BUILD = sim_build/column_decoder
+endif
+
+ifeq ($(COMPONENT),column_mux)
+	VERILOG_SOURCES = $(SRC_DIR)/column_mux.v $(PWD)/tb_column_mux.v
+	TOPLEVEL = tb_column_mux
+	COCOTB_TEST_MODULES = test_column_mux
+	SIM_BUILD = sim_build/column_mux
 endif
 
 ifneq ($(GATES),yes)
