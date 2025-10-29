@@ -8,11 +8,22 @@ TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = project.v
 
+# Component testing support
+# Usage: make COMPONENT=row_decoder
+COMPONENT ?= 
+
+ifeq ($(COMPONENT),row_decoder)
+	VERILOG_SOURCES = $(SRC_DIR)/row_decoder.v $(PWD)/tb_row_decoder.v
+	TOPLEVEL = tb_row_decoder
+	COCOTB_TEST_MODULES = test_row_decoder
+	SIM_BUILD = sim_build/row_decoder
+endif
+
 ifneq ($(GATES),yes)
 
 # RTL simulation:
-SIM_BUILD				= sim_build/rtl
-VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
+SIM_BUILD				?= sim_build/rtl
+VERILOG_SOURCES ?= $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
 
 else
 
@@ -35,11 +46,12 @@ endif
 COMPILE_ARGS 		+= -I$(SRC_DIR)
 
 # Include the testbench sources:
+VERILOG_SOURCES ?= $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
 VERILOG_SOURCES += $(PWD)/tb.v
-TOPLEVEL = tb
+TOPLEVEL ?= tb
 
 # List test modules to run, separated by commas and without the .py suffix:
-COCOTB_TEST_MODULES = test
+COCOTB_TEST_MODULES ?= test
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
