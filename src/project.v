@@ -18,13 +18,12 @@
 //   uo_out[7:5]  : unused
 //
 // Memory Array Interface (for integration with analog blocks):
-//   - wordline[63:0]       : To memory cells
-//   - bitline[63:0]        : Differential bitlines (BL)
-//   - bitline_bar[63:0]    : Differential bitlines (BL̄)
-//   - sense_data[63:0]     : From sense amplifiers
+//   The memory array interface signals (wordline, bitline, bitline_bar, 
+//   sense_data, precharge_en) are kept internal to this module.
+//   For tapeout, these will be manually connected to analog blocks in Magic.
 //
-// NOTE: For simulation/testing, memory array interface is stubbed.
-//       For tapeout, these signals connect to analog memory array.
+// NOTE: For simulation/testing, memory array interface is stubbed internally.
+//       For tapeout, remove the stub and manually wire to analog cells in layout.
 
 module tt_um_example (
     input  wire [7:0] ui_in,    // Dedicated inputs
@@ -64,29 +63,11 @@ module tt_um_example (
     assign uio_oe  = 8'b0;
     
     // ==========================================================================
-    // Memory Array Interface (for analog blocks)
-    // ==========================================================================
-    
-    wire [63:0] wordline;
-    wire [63:0] bitline;
-    wire [63:0] bitline_bar;
-    wire [63:0] sense_data;
-    wire        precharge_en;
-    
-    // For simulation: stub the memory array with a simple behavioral model
-    // For tapeout: remove this and connect to actual analog blocks
-    sram_array_stub mem_array_stub (
-        .clk(clk),
-        .wordline(wordline),
-        .bitline(bitline),
-        .bitline_bar(bitline_bar),
-        .sense_data(sense_data),
-        .precharge_en(precharge_en)
-    );
-    
-    // ==========================================================================
     // SRAM Core Instance
     // ==========================================================================
+    // Memory array interface is now internal to sram_core
+    // For tapeout: Remove memory stub in sram_core and manually connect
+    //              to analog blocks in Magic layout
     
     sram_core sram (
         .clk(clk),
@@ -96,76 +77,8 @@ module tt_um_example (
         .enable(enable),
         .read_not_write(read_not_write),
         .data_out(data_out),
-        .ready(ready),
-        .wordline(wordline),
-        .bitline(bitline),
-        .bitline_bar(bitline_bar),
-        .sense_data(sense_data),
-        .precharge_en(precharge_en)
+        .ready(ready)
     );
-
-endmodule
-
-// =============================================================================
-// Memory Array Stub (for simulation only)
-// =============================================================================
-//
-// This is a simple behavioral model of the memory array + sense amps.
-// Replace this with actual analog blocks for tapeout.
-
-module sram_array_stub (
-    input  wire        clk,
-    input  wire [63:0] wordline,
-    input  wire [63:0] bitline,
-    input  wire [63:0] bitline_bar,
-    output wire [63:0] sense_data,
-    input  wire        precharge_en  // Precharge enable (for P/EQ circuit)
-);
-
-    // Simple register array for simulation
-    reg [63:0] memory [0:63];  // 64 rows × 64 bits
-    
-    integer i;
-    initial begin
-        // Initialize memory to zero
-        for (i = 0; i < 64; i = i + 1) begin
-            memory[i] = 64'h0;
-        end
-    end
-    
-    // Find which wordline is active (one-hot encoding)
-    reg [5:0] active_row;
-    reg row_active;
-    
-    always @(*) begin
-        active_row = 0;
-        row_active = 0;
-        for (i = 0; i < 64; i = i + 1) begin
-            if (wordline[i]) begin
-                active_row = i;
-                row_active = 1;
-            end
-        end
-    end
-    
-    // Write operation: if bitline is driven (not Z), write to memory
-    always @(posedge clk) begin
-        if (row_active) begin
-            for (i = 0; i < 64; i = i + 1) begin
-                if (bitline[i] !== 1'bz && bitline_bar[i] !== 1'bz) begin
-                    // Write operation detected
-                    memory[active_row][i] <= bitline[i];
-                end
-            end
-        end
-    end
-    
-    // Read operation: output selected row to sense_data
-    assign sense_data = row_active ? memory[active_row] : 64'bz;
-    
-    // Note: In real implementation, precharge_en controls P/EQ transistors
-    // that pull bitlines to VDD. This stub doesn't model that behavior.
-    // The analog team will connect precharge_en to their P/EQ circuit.
 
 endmodule
 

@@ -23,7 +23,7 @@
 //   - Precharge/Equalization - provided by other groups
 
 module sram_core (
-    input  wire        clk,
+    input  wire        clk,            // Clock (for memory stub simulation)
     input  wire        rst_n,
     
     // User interface
@@ -32,14 +32,7 @@ module sram_core (
     input  wire        enable,         // Chip select
     input  wire        read_not_write, // 1=read, 0=write
     output wire [3:0]  data_out,       // 4-bit data output (read)
-    output wire        ready,          // Operation complete
-    
-    // Memory array interface (to be connected to analog blocks)
-    output wire [63:0] wordline,       // 64 wordlines to memory array
-    output wire [63:0] bitline,        // 64 bitlines (BL)
-    output wire [63:0] bitline_bar,    // 64 complementary bitlines (BL̄)
-    input  wire [63:0] sense_data,     // 64 bits from sense amplifiers
-    output wire        precharge_en    // Precharge/equalization enable
+    output wire        ready           // Operation complete
 );
 
     // ==========================================================================
@@ -60,6 +53,14 @@ module sram_core (
     // Decoder outputs
     wire [63:0] row_select;   // One-hot row select
     wire [15:0] col_select;   // One-hot column select
+    
+    // Memory array interface (internal signals for analog integration)
+    // These will be connected to analog blocks manually in Magic layout
+    wire [63:0] wordline;       // To memory cells
+    wire [63:0] bitline;        // BL
+    wire [63:0] bitline_bar;    // BL̄
+    wire [63:0] sense_data;     // From sense amps
+    wire        precharge_en;   // To P/EQ circuit
     
     // ==========================================================================
     // Control FSM
@@ -144,6 +145,50 @@ module sram_core (
         .bitline(bitline),
         .bitline_bar(bitline_bar)
     );
+    
+    // ==========================================================================
+    // Memory Array Stub (for simulation only)
+    // ==========================================================================
+    // For tapeout: Remove this stub and manually connect to analog blocks in Magic
+    
+    // Simple behavioral memory for simulation
+    reg [63:0] memory [0:63];
+    integer i;
+    
+    initial begin
+        for (i = 0; i < 64; i = i + 1) begin
+            memory[i] = 64'h0;
+        end
+    end
+    
+    // Find active row
+    reg [5:0] active_row;
+    reg row_active;
+    always @(*) begin
+        active_row = 0;
+        row_active = 0;
+        for (i = 0; i < 64; i = i + 1) begin
+            if (wordline[i]) begin
+                active_row = i[5:0];
+                row_active = 1;
+            end
+        end
+    end
+    
+    // Write operation
+    always @(posedge clk) begin
+        if (row_active) begin
+            for (i = 0; i < 64; i = i + 1) begin
+                if (bitline[i] !== 1'bz && bitline_bar[i] !== 1'bz) begin
+                    memory[active_row][i] <= bitline[i];
+                end
+            end
+        end
+    end
+    
+    // Read operation
+    assign sense_data = row_active ? memory[active_row] : 64'bz;
+    assign precharge_en = precharge_enable;
 
 endmodule
 
