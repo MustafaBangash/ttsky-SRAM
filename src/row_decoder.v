@@ -56,20 +56,6 @@ module row_decoder #(
 
 endmodule
 
-// Wordline driver: 2-stage inverter chain for strong drive capability
-// Even number of inverters maintains signal polarity (non-inverting buffer)
-module wordline_driver (
-    input  wire in,
-    output wire out
-);
-    wire inv1;
-    
-    // 2-stage inverter chain (inv -> inv = non-inverting buffer with strong drive)
-    assign inv1 = ~in;
-    assign out  = ~inv1;
-
-endmodule
-
 // 3:8 NOR-based predecoder
 // Implements one-hot decoding using NOR gates
 module predecoder_3to8 (

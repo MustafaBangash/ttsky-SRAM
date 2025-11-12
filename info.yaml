@@ -1,11 +1,11 @@
 # Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
+  title:        "Single-Tile SRAM with 4-bit Words"      # Project title
+  author:       "Your Name"      # Your name
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
+  description:  "64x64 SRAM array with 10-bit addressing, 4-bit word size, 50MHz operation"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  clock_hz:     50000000       # Clock frequency in Hz (50MHz)
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
   tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
@@ -18,39 +18,46 @@ project:
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
     - "project.v"
+    - "sram_core.v"
+    - "sram_control.v"
+    - "sram_utils.v"
+    - "row_decoder.v"
+    - "column_decoder.v"
+    - "column_mux.v"
+    - "write_driver.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
-  # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
-  ui[3]: ""
-  ui[4]: ""
-  ui[5]: ""
-  ui[6]: ""
-  ui[7]: ""
+  # Inputs - 10-bit address (lower 8 bits)
+  ui[0]: "ADDR[0]"
+  ui[1]: "ADDR[1]"
+  ui[2]: "ADDR[2]"
+  ui[3]: "ADDR[3]"
+  ui[4]: "ADDR[4]"
+  ui[5]: "ADDR[5]"
+  ui[6]: "ADDR[6]"
+  ui[7]: "ADDR[7]"
 
-  # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
+  # Outputs - 4-bit data output (for reads)
+  uo[0]: "DATA_OUT[0]"
+  uo[1]: "DATA_OUT[1]"
+  uo[2]: "DATA_OUT[2]"
+  uo[3]: "DATA_OUT[3]"
+  uo[4]: "READY"
   uo[5]: ""
   uo[6]: ""
   uo[7]: ""
 
-  # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
+  # Bidirectional pins - Used as inputs (2-bit upper addr + control + 4-bit data in)
+  uio[0]: "DATA_IN[0]"
+  uio[1]: "DATA_IN[1]"
+  uio[2]: "DATA_IN[2]"
+  uio[3]: "DATA_IN[3]"
+  uio[4]: "ENABLE"
+  uio[5]: "READ_NOT_WRITE"
+  uio[6]: "ADDR[8]"
+  uio[7]: "ADDR[9]"
 
 # Do not change!
 yaml_version: 6

@@ -75,19 +75,5 @@ module predecoder_2to4 (
 
 endmodule
 
-// Reuse the wordline_driver from row_decoder
-// (In synthesis, this will be shared if both files are included)
-// 2-stage inverter chain = non-inverting buffer
-module wordline_driver (
-    input  wire in,
-    output wire out
-);
-    wire inv1;
-    
-    assign inv1 = ~in;
-    assign out  = ~inv1;
-
-endmodule
-
 `default_nettype wire
 

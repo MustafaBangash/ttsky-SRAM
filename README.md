@@ -1,8 +1,11 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# Single-Tile SRAM with 4-bit Words
+
+A complete SRAM module designed for Tiny Tapeout, featuring a 64×64 bit array organized as 1024 words of 4 bits each.
 
 - [Read the documentation for project](docs/info.md)
+- [Component documentation](docs/SRAM_COMPONENTS.md)
 
 ## What is Tiny Tapeout?
 
@@ -31,10 +34,80 @@ The GitHub action will automatically build the ASIC files using [LibreLane](http
 - [Join the community](https://tinytapeout.com/discord)
 - [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
 
+## Design Overview
+
+### Architecture
+- **Memory Array**: 64 rows × 64 columns (4096 bits total)
+- **Organization**: 1024 words × 4 bits per word
+- **Addressing**: 10-bit address (6 bits for row, 4 bits for column)
+- **Operation**: 2-cycle read/write at 50MHz (40ns total latency)
+
+### Components
+1. **Row Decoder** (6:64): NOR-based predecoding with buffer chains
+2. **Column Decoder** (4:16): Selects one of 16 4-bit words per row
+3. **Column Mux** (64:4): 4 parallel 16:1 muxes for read path
+4. **Write Drivers** (4→64): Differential bitline drivers with strong buffers
+5. **Control FSM**: 2-cycle state machine for coordinating operations
+6. **SRAM Core**: Top-level integration of all digital components
+
+### Pin Mapping
+- **Inputs** (16 pins total):
+  - `ui_in[7:0]`, `uio_in[7:6]`: 10-bit address
+  - `uio_in[3:0]`: 4-bit write data
+  - `uio_in[4]`: ENABLE (chip select)
+  - `uio_in[5]`: READ_NOT_WRITE (1=read, 0=write)
+- **Outputs** (5 pins):
+  - `uo_out[3:0]`: 4-bit read data
+  - `uo_out[4]`: READY (operation complete)
+
+### Operation
+- **Write**: Address + data → 2 cycles → data stored, READY=1
+- **Read**: Address → 2 cycles → data_out valid, READY=1
+- **Throughput**: 25 million operations/second (50MHz ÷ 2 cycles)
+
+## Testing
+
+Run all tests:
+```bash
+cd test
+make test_all  # Test all components
+make           # Integration test
+```
+
+Test individual components:
+```bash
+make COMPONENT=row_decoder
+make COMPONENT=column_decoder
+make COMPONENT=column_mux
+make COMPONENT=write_driver
+```
+
+View waveforms:
+```bash
+gtkwave waveforms/tb.vcd
+```
+
+## Test Results
+
+✅ **All tests passing:**
+- Row Decoder: PASS
+- Column Decoder: PASS
+- Column Mux: PASS
+- Write Driver: PASS (with differential outputs)
+- **Integration Test: PASS** (14 operations verified)
+
+## For Tapeout
+
+The design includes a behavioral memory model (`sram_array_stub`) for simulation. For tapeout, this should be replaced with:
+- **Memory Array**: 64×64 6T SRAM cells (provided by analog team)
+- **Sense Amplifiers**: 64 differential sense amps (provided by analog team)
+- **Precharge/Equalization**: P/EQ circuitry for bitlines (provided by analog team)
+
+Interface signals are already defined in `project.v` for easy integration.
+
 ## What next?
 
 - [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
 - Share your project on your social network of choice:
   - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
   - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)

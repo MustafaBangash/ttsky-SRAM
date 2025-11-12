@@ -11,7 +11,7 @@ module tb_row_decoder ();
 
     // Dump the signals to a VCD file. You can view it with gtkwave or surfer.
     initial begin
-        $dumpfile("tb.vcd");
+        $dumpfile("waveforms/tb_row_decoder.vcd");
         $dumpvars(0, tb_row_decoder);
         #1;
     end

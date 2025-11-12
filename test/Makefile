@@ -9,35 +9,50 @@ SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = project.v
 
 # Component testing support
-# Usage: make COMPONENT=row_decoder | column_decoder | column_mux
+# Usage: make COMPONENT=row_decoder | column_decoder | column_mux | write_driver
 COMPONENT ?= 
 
 ifeq ($(COMPONENT),row_decoder)
-	VERILOG_SOURCES = $(SRC_DIR)/row_decoder.v $(PWD)/tb_row_decoder.v
+	VERILOG_SOURCES = $(SRC_DIR)/sram_utils.v $(SRC_DIR)/row_decoder.v $(PWD)/testbenches/tb_row_decoder.v
 	TOPLEVEL = tb_row_decoder
-	COCOTB_TEST_MODULES = test_row_decoder
+	COCOTB_TEST_MODULES = tests.test_row_decoder
 	SIM_BUILD = sim_build/row_decoder
 endif
 
 ifeq ($(COMPONENT),column_decoder)
-	VERILOG_SOURCES = $(SRC_DIR)/column_decoder.v $(PWD)/tb_column_decoder.v
+	VERILOG_SOURCES = $(SRC_DIR)/sram_utils.v $(SRC_DIR)/column_decoder.v $(PWD)/testbenches/tb_column_decoder.v
 	TOPLEVEL = tb_column_decoder
-	COCOTB_TEST_MODULES = test_column_decoder
+	COCOTB_TEST_MODULES = tests.test_column_decoder
 	SIM_BUILD = sim_build/column_decoder
 endif
 
 ifeq ($(COMPONENT),column_mux)
-	VERILOG_SOURCES = $(SRC_DIR)/column_mux.v $(PWD)/tb_column_mux.v
+	VERILOG_SOURCES = $(SRC_DIR)/column_mux.v $(PWD)/testbenches/tb_column_mux.v
 	TOPLEVEL = tb_column_mux
-	COCOTB_TEST_MODULES = test_column_mux
+	COCOTB_TEST_MODULES = tests.test_column_mux
 	SIM_BUILD = sim_build/column_mux
+endif
+
+ifeq ($(COMPONENT),write_driver)
+	VERILOG_SOURCES = $(SRC_DIR)/sram_utils.v $(SRC_DIR)/write_driver.v $(PWD)/testbenches/tb_write_driver.v
+	TOPLEVEL = tb_write_driver
+	COCOTB_TEST_MODULES = tests.test_write_driver
+	SIM_BUILD = sim_build/write_driver
 endif
 
 ifneq ($(GATES),yes)
 
 # RTL simulation:
 SIM_BUILD				?= sim_build/rtl
-VERILOG_SOURCES ?= $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
+# Include all source files for integration test
+VERILOG_SOURCES ?= $(SRC_DIR)/sram_utils.v \
+                   $(SRC_DIR)/project.v \
+                   $(SRC_DIR)/sram_core.v \
+                   $(SRC_DIR)/sram_control.v \
+                   $(SRC_DIR)/row_decoder.v \
+                   $(SRC_DIR)/column_decoder.v \
+                   $(SRC_DIR)/column_mux.v \
+                   $(SRC_DIR)/write_driver.v
 
 else
 
@@ -61,11 +76,42 @@ COMPILE_ARGS 		+= -I$(SRC_DIR)
 
 # Include the testbench sources:
 VERILOG_SOURCES ?= $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
-VERILOG_SOURCES += $(PWD)/tb.v
+VERILOG_SOURCES += $(PWD)/testbenches/tb.v
 TOPLEVEL ?= tb
 
 # List test modules to run, separated by commas and without the .py suffix:
-COCOTB_TEST_MODULES ?= test
+COCOTB_TEST_MODULES ?= tests.test
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# Convenience target to test all components
+.PHONY: test_all
+test_all:
+	@echo "=========================================="
+	@echo "Testing Row Decoder..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE) COMPONENT=row_decoder
+	@echo ""
+	@echo "=========================================="
+	@echo "Testing Column Decoder..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE) COMPONENT=column_decoder
+	@echo ""
+	@echo "=========================================="
+	@echo "Testing Column Mux..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE) COMPONENT=column_mux
+	@echo ""
+	@echo "=========================================="
+	@echo "Testing Write Driver..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE) COMPONENT=write_driver
+	@echo ""
+	@echo "=========================================="
+	@echo "✅ ALL TESTS COMPLETE"
+	@echo "=========================================="

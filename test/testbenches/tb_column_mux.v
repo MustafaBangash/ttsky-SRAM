@@ -11,7 +11,7 @@ module tb_column_mux ();
 
     // Dump the signals to a VCD file. You can view it with gtkwave or surfer.
     initial begin
-        $dumpfile("tb.vcd");
+        $dumpfile("waveforms/tb_column_mux.vcd");
         $dumpvars(0, tb_column_mux);
         #1;
     end
