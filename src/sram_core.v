@@ -146,12 +146,12 @@ module sram_core (
         .bitline_bar(bitline_bar)
     );
     
+`ifndef SYNTHESIS
     // ==========================================================================
-    // Memory Array Stub (for simulation/synthesis)
+    // Memory Array Stub (SIMULATION ONLY - for RTL testing)
     // ==========================================================================
-    // ⚠️ TEMPORARY STUB - REMOVE BEFORE TAPEOUT ⚠️
-    // This stub is synthesis-friendly but should be removed when integrating
-    // analog blocks in Magic layout.
+    // ⚠️ This stub is removed during synthesis. In the final chip, sense_data
+    // will be connected to analog sense amplifiers in Magic layout.
     
     // Simple behavioral memory for simulation
     reg [63:0] memory [0:63];
@@ -249,6 +249,16 @@ module sram_core (
     // Read operation (always driven - synthesis safe)
     assign sense_data = memory[active_row];
     assign precharge_en = precharge_enable;
+
+`else
+    // ==========================================================================
+    // Synthesis Mode: No memory array (analog blocks added in Magic)
+    // ==========================================================================
+    // Tie sense_data to zero to prevent Yosys warnings about floating inputs.
+    // In Magic, you'll delete this connection and wire to real sense amps.
+    assign sense_data = 64'h0;
+    assign precharge_en = precharge_enable;
+`endif
 
 endmodule
 

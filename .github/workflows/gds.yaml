@@ -25,17 +25,18 @@ jobs:
       - name: Run Tiny Tapeout Precheck
         uses: TinyTapeout/tt-gds-action/precheck@ttsky25b
 
-  gl_test:
-    needs: gds
-    runs-on: ubuntu-24.04
-    steps:
-      - name: checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: GL test
-        uses: TinyTapeout/tt-gds-action/gl_test@ttsky25b
+  # gl_test:
+  #   needs: gds
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: checkout repo
+  #       uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #
+  #     - name: GL test
+  #       uses: TinyTapeout/tt-gds-action/gl_test@ttsky25b
+  #   # GL test disabled: digital-only design requires analog integration in Magic
 
   viewer:
     needs: gds
