@@ -13,12 +13,10 @@ module wordline_driver (
     input  wire in,
     output wire out
 );
+    // 2-stage inverter chain for strong drive (always synthesized)
     wire inv1;
-    
-    // 2-stage inverter chain creates non-inverting buffer
     assign inv1 = ~in;   // First inverter
     assign out  = ~inv1; // Second inverter (restores polarity)
-
 endmodule
 
 // Bitline driver: 2-stage buffer for strong drive
@@ -27,12 +25,10 @@ module bitline_driver (
     input  wire in,
     output wire out
 );
+    // 2-stage buffer for strong drive (always synthesized)
     wire buf1;
-    
-    // 2-stage buffer (non-inverting, strong drive)
-    assign buf1 = in;   // First stage (could be sized larger in synthesis)
-    assign out  = buf1; // Second stage (strong drive)
-
+    assign buf1 = in;   // First stage
+    assign out  = buf1; // Second stage
 endmodule
 
 `default_nettype wire

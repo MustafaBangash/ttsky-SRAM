@@ -254,9 +254,11 @@ module sram_core (
     // ==========================================================================
     // Synthesis Mode: No memory array (analog blocks added in Magic)
     // ==========================================================================
-    // Tie sense_data to zero to prevent Yosys warnings about floating inputs.
-    // In Magic, you'll delete this connection and wire to real sense amps.
-    assign sense_data = 64'h0;
+    // For synthesis: create a minimal stub that won't cause routing issues.
+    // Use a simple replication to avoid creating 64 separate tie cells.
+    // In Magic, delete this and connect to real sense amps.
+    wire stub_zero = 1'b0;
+    assign sense_data = {64{stub_zero}};
     assign precharge_en = precharge_enable;
 `endif
 

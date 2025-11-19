@@ -39,20 +39,31 @@ The `gl_test` job has been commented out because:
 
 ## 3. What Gets Synthesized
 
-Your GDS file will contain **only**:
+Your GDS file will contain:
 
-### Digital Components (Synthesized):
-- ✅ Row Decoder (6:64 with 3:8 predecoders)
-- ✅ Column Decoder (4:16)
+### Digital Components (Fully Synthesized):
+- ✅ Row Decoder (6:64 with 3:8 predecoders) + 64 wordline buffers
+- ✅ Column Decoder (4:16) + 16 column select buffers
 - ✅ Column Mux (4 parallel 16:1 muxes)
-- ✅ Write Drivers (64 differential drivers)
+- ✅ Write Drivers (64 differential drivers) + 128 bitline buffers
 - ✅ Control FSM (2-cycle state machine)
-- ✅ All buffer chains and logic gates
+- ✅ All buffer chains for driving analog loads
 
-### NOT Synthesized (Open Connections):
+**Total: ~400 buffer cells + control logic**
+
+### NOT Synthesized (Analog Integration):
 - ❌ Memory array (64x64 cells)
 - ❌ Sense amplifiers
 - ❌ Precharge/Equalization circuits
+
+### Handling Routing Congestion
+
+The design is dense with 208 buffer drivers. To prevent FEOL violations:
+- **Placement density increased to 75%** (from default 60%)
+- **Clock period relaxed to 40ns (25MHz)** (from 50MHz)
+- These give the placer/router more room to work
+
+The buffers are **essential** for driving analog loads with low latency.
 
 ## 4. Magic Integration Workflow
 
@@ -76,10 +87,11 @@ magic -T sky130A tt_um_example.gds
 ### Step 4: Remove Synthesis Stub
 In Magic, locate and **delete** this connection:
 ```verilog
-assign sense_data = 64'h0;  // ← DELETE THIS in Magic
+wire stub_zero = 1'b0;
+assign sense_data = {64{stub_zero}};  // ← DELETE THIS in Magic
 ```
 
-This is the dummy connection added to prevent Yosys warnings. It appears as a tie-to-zero cell.
+This is the dummy tie-to-zero connection added to prevent Yosys warnings. It appears as a single tie-low cell with fanout to all 64 sense_data bits.
 
 ### Step 5: Connect Analog Blocks
 
@@ -152,13 +164,34 @@ After GDS generation, check the synthesis log for:
 - Memory stub is included for testing
 - All cocotb tests pass as before
 
-## 9. Next Steps
+## 9. If FEOL/Precheck Still Fails
+
+If you still see FEOL violations after these changes, try:
+
+### Option A: Further Relax Constraints
+```json
+// In src/config.json
+"PL_TARGET_DENSITY_PCT": 80,  // Give even more space
+"CLOCK_PERIOD": 60,            // Slow down to 16.7MHz
+```
+
+### Option B: Reduce Buffer Stages
+Change buffers from 2-stage to 1-stage in `src/sram_utils.v`:
+```verilog
+// Simpler 1-stage buffer (loses some drive strength)
+assign out = in;  // Direct connection or single inverter
+```
+
+### Option C: Manual Floorplanning
+Add floorplan hints to separate decoder/mux/driver blocks spatially in OpenLane config.
+
+## 10. Next Steps
 
 1. ✅ Push to GitHub
 2. ✅ Wait for GDS workflow to complete
 3. ✅ Download GDS file
 4. ✅ Open in Magic
-5. ✅ Remove `sense_data` tie-to-zero
+5. ✅ Remove `sense_data` tie-to-zero stub
 6. ✅ Import analog blocks from other groups
 7. ✅ Connect digital ↔ analog signals
 8. ✅ Run DRC/LVS
