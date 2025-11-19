@@ -254,11 +254,10 @@ module sram_core (
     // ==========================================================================
     // Synthesis Mode: No memory array (analog blocks added in Magic)
     // ==========================================================================
-    // For synthesis: create a minimal stub that won't cause routing issues.
-    // Use a simple replication to avoid creating 64 separate tie cells.
-    // In Magic, delete this and connect to real sense amps.
-    wire stub_zero = 1'b0;
-    assign sense_data = {64{stub_zero}};
+    // Create a stub that prevents optimization but uses minimal logic.
+    // Make sense_data depend on wordline so the read path isn't optimized away.
+    // In Magic, delete this stub and connect to real sense amps.
+    assign sense_data = {64{wordline[0]}};  // Simple stub that keeps logic alive
     assign precharge_en = precharge_enable;
 `endif
 
