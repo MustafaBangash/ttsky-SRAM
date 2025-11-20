@@ -57,8 +57,13 @@ module sram_core (
     // Memory array interface (internal signals for analog integration)
     // These will be connected to analog blocks manually in Magic layout
     wire [63:0] wordline;       // To memory cells
-    wire [63:0] bitline;        // BL
-    wire [63:0] bitline_bar;    // BL̄
+    
+    /* verilator lint_off TRISTATEIO */
+    // Tri-state signals are intentional for analog SRAM interface
+    wire [63:0] bitline;        // BL (tri-state from write drivers)
+    wire [63:0] bitline_bar;    // BL̄ (tri-state from write drivers)
+    /* verilator lint_on TRISTATEIO */
+    
     wire [63:0] sense_data;     // From sense amps
     wire        precharge_en;   // To P/EQ circuit
     

@@ -49,7 +49,7 @@ module memory_array_stub (
     (* dont_touch = "true" *)
     reg [63:0] memory [0:63];
     
-    integer i, j;
+    integer i;
     
     // ==========================================================================
     // Initialization
@@ -110,6 +110,7 @@ module memory_array_stub (
     // Even though we don't functionally use precharge_en in this stub,
     // we need to reference it so the connection isn't optimized away
     
+    /* verilator lint_off UNUSEDSIGNAL */
     (* keep = "true" *)
     wire precharge_monitored = precharge_en;
     
@@ -117,6 +118,7 @@ module memory_array_stub (
     // This ensures all 128 bitline connections are preserved
     (* keep = "true" *)
     wire [63:0] blb_monitored = bitline_bar;
+    /* verilator lint_on UNUSEDSIGNAL */
 
 endmodule
 
