@@ -24,8 +24,9 @@
   "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.05,
 
   "//": "RUN_LINTER, LINTER_INCLUDE_PDK_MODELS - Disabling the linter is not recommended!",
-  "RUN_LINTER": 1,
-  "LINTER_INCLUDE_PDK_MODELS": 1,
+  "//": "Disabled for SRAM design with intentional tri-state bitlines",
+  "RUN_LINTER": 0,
+  "LINTER_INCLUDE_PDK_MODELS": 0,
 
   "//": "If you need a custom clock configuration, read the following documentation first:",
   "//": "https://tinytapeout.com/faq/#how-can-i-map-an-additional-external-clock-to-one-of-the-gpios",
