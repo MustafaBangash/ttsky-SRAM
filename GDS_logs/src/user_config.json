@@ -1,0 +1,19 @@
+{
+  "DESIGN_NAME": "tt_um_example",
+  "VERILOG_FILES": [
+    "dir::project.v",
+    "dir::sram_core.v",
+    "dir::sram_control.v",
+    "dir::sram_utils.v",
+    "dir::row_decoder.v",
+    "dir::column_decoder.v",
+    "dir::column_mux.v",
+    "dir::write_driver.v",
+    "dir::memory_array_stub.v"
+  ],
+  "DIE_AREA": "0 0 161.00 111.52",
+  "FP_DEF_TEMPLATE": "dir::../tt/tech/sky130A/def/tt_block_1x1_pg.def",
+  "VDD_PIN": "VPWR",
+  "GND_PIN": "VGND",
+  "RT_MAX_LAYER": "met4"
+}

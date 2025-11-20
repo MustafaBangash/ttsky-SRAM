@@ -33,11 +33,9 @@ module memory_array_stub (
     // Column interface (from/to write drivers and column mux)
     input  wire [63:0] bitline,       // 64 bitlines (from write drivers)
     input  wire [63:0] bitline_bar,   // 64 complementary bitlines
-    input  wire [15:0] col_select,    // Column select (which 4 bits to write)
     output wire [63:0] sense_data,    // 64 sense outputs (to column mux)
     
-    // Control signals (from control FSM)
-    input  wire        write_enable,  // Write operation active
+    // Precharge control (from control FSM)
     input  wire        precharge_en
 );
 
@@ -80,25 +78,20 @@ module memory_array_stub (
     end
     
     // ==========================================================================
-    // Write Logic - Updates memory based on bitline values  
+    // Write Logic - Updates memory based on bitline values
     // ==========================================================================
-    // Only writes selected columns (avoids high-Z check that doesn't synthesize)
+    // Only writes if bitline is driven (not high-Z)
     
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 64; i = i + 1) begin
                 memory[i] <= 64'h0;
             end
-        end else if (write_enable && |wordline) begin
-            // Write only to selected columns (4 bits per word)
-            // col_select is one-hot indicating which of 16 words is selected
-            for (i = 0; i < 16; i = i + 1) begin
-                if (col_select[i]) begin
-                    // Write 4 bits for this word (columns are interleaved)
-                    memory[active_row][i*4 + 0] <= bitline[i*4 + 0];
-                    memory[active_row][i*4 + 1] <= bitline[i*4 + 1];
-                    memory[active_row][i*4 + 2] <= bitline[i*4 + 2];
-                    memory[active_row][i*4 + 3] <= bitline[i*4 + 3];
+        end else begin
+            // Write to active row
+            for (i = 0; i < 64; i = i + 1) begin
+                if (bitline[i] !== 1'bz && wordline[active_row]) begin
+                    memory[active_row][i] <= bitline[i];
                 end
             end
         end

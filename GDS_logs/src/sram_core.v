@@ -164,9 +164,7 @@ module sram_core (
         .wordline(wordline),
         .bitline(bitline),
         .bitline_bar(bitline_bar),
-        .col_select(col_select),
         .sense_data(sense_data),
-        .write_enable(write_enable),
         .precharge_en(precharge_enable)
     );
 
