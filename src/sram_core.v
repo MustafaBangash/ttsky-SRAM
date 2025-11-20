@@ -146,120 +146,27 @@ module sram_core (
         .bitline_bar(bitline_bar)
     );
     
-`ifndef SYNTHESIS
     // ==========================================================================
-    // Memory Array Stub (SIMULATION ONLY - for RTL testing)
+    // Memory Array Stub (Both Simulation and Synthesis)
     // ==========================================================================
-    // ⚠️ This stub is removed during synthesis. In the final chip, sense_data
-    // will be connected to analog sense amplifiers in Magic layout.
+    // This module serves dual purposes:
+    // 1. In SIMULATION: Provides functional memory for testing
+    // 2. In SYNTHESIS: Creates physical placeholder (~4096 FFs) for layout
+    //
+    // The stub reserves space and organizes connections (wordlines, bitlines)
+    // at predictable locations for easy integration with analog blocks in Magic.
+    //
+    // ** DELETE THIS MODULE IN MAGIC BEFORE CONNECTING REAL ANALOG ARRAY **
     
-    // Simple behavioral memory for simulation
-    reg [63:0] memory [0:63];
-    integer i;
-    
-    initial begin
-        for (i = 0; i < 64; i = i + 1) begin
-            memory[i] = 64'h0;
-        end
-    end
-    
-    // One-hot to binary decoder (priority-encoded for synthesis)
-    reg [5:0] active_row;
-    always @(*) begin
-        active_row = 6'b0;
-        // Priority encoder - check from LSB to MSB
-        if (wordline[0])  active_row = 6'd0;
-        if (wordline[1])  active_row = 6'd1;
-        if (wordline[2])  active_row = 6'd2;
-        if (wordline[3])  active_row = 6'd3;
-        if (wordline[4])  active_row = 6'd4;
-        if (wordline[5])  active_row = 6'd5;
-        if (wordline[6])  active_row = 6'd6;
-        if (wordline[7])  active_row = 6'd7;
-        if (wordline[8])  active_row = 6'd8;
-        if (wordline[9])  active_row = 6'd9;
-        if (wordline[10]) active_row = 6'd10;
-        if (wordline[11]) active_row = 6'd11;
-        if (wordline[12]) active_row = 6'd12;
-        if (wordline[13]) active_row = 6'd13;
-        if (wordline[14]) active_row = 6'd14;
-        if (wordline[15]) active_row = 6'd15;
-        if (wordline[16]) active_row = 6'd16;
-        if (wordline[17]) active_row = 6'd17;
-        if (wordline[18]) active_row = 6'd18;
-        if (wordline[19]) active_row = 6'd19;
-        if (wordline[20]) active_row = 6'd20;
-        if (wordline[21]) active_row = 6'd21;
-        if (wordline[22]) active_row = 6'd22;
-        if (wordline[23]) active_row = 6'd23;
-        if (wordline[24]) active_row = 6'd24;
-        if (wordline[25]) active_row = 6'd25;
-        if (wordline[26]) active_row = 6'd26;
-        if (wordline[27]) active_row = 6'd27;
-        if (wordline[28]) active_row = 6'd28;
-        if (wordline[29]) active_row = 6'd29;
-        if (wordline[30]) active_row = 6'd30;
-        if (wordline[31]) active_row = 6'd31;
-        if (wordline[32]) active_row = 6'd32;
-        if (wordline[33]) active_row = 6'd33;
-        if (wordline[34]) active_row = 6'd34;
-        if (wordline[35]) active_row = 6'd35;
-        if (wordline[36]) active_row = 6'd36;
-        if (wordline[37]) active_row = 6'd37;
-        if (wordline[38]) active_row = 6'd38;
-        if (wordline[39]) active_row = 6'd39;
-        if (wordline[40]) active_row = 6'd40;
-        if (wordline[41]) active_row = 6'd41;
-        if (wordline[42]) active_row = 6'd42;
-        if (wordline[43]) active_row = 6'd43;
-        if (wordline[44]) active_row = 6'd44;
-        if (wordline[45]) active_row = 6'd45;
-        if (wordline[46]) active_row = 6'd46;
-        if (wordline[47]) active_row = 6'd47;
-        if (wordline[48]) active_row = 6'd48;
-        if (wordline[49]) active_row = 6'd49;
-        if (wordline[50]) active_row = 6'd50;
-        if (wordline[51]) active_row = 6'd51;
-        if (wordline[52]) active_row = 6'd52;
-        if (wordline[53]) active_row = 6'd53;
-        if (wordline[54]) active_row = 6'd54;
-        if (wordline[55]) active_row = 6'd55;
-        if (wordline[56]) active_row = 6'd56;
-        if (wordline[57]) active_row = 6'd57;
-        if (wordline[58]) active_row = 6'd58;
-        if (wordline[59]) active_row = 6'd59;
-        if (wordline[60]) active_row = 6'd60;
-        if (wordline[61]) active_row = 6'd61;
-        if (wordline[62]) active_row = 6'd62;
-        if (wordline[63]) active_row = 6'd63;
-    end
-    
-    // Write operation (only write bits that are driven, ignore high-Z)
-    always @(posedge clk) begin
-        if (write_enable) begin
-            for (i = 0; i < 64; i = i + 1) begin
-                // Only write if bitline is actually driven (not high-Z)
-                if (bitline[i] !== 1'bz) begin
-                    memory[active_row][i] <= bitline[i];
-                end
-            end
-        end
-    end
-    
-    // Read operation (always driven - synthesis safe)
-    assign sense_data = memory[active_row];
-    assign precharge_en = precharge_enable;
-
-`else
-    // ==========================================================================
-    // Synthesis Mode: No memory array (analog blocks added in Magic)
-    // ==========================================================================
-    // Create a stub that prevents optimization but uses minimal logic.
-    // Make sense_data depend on wordline so the read path isn't optimized away.
-    // In Magic, delete this stub and connect to real sense amps.
-    assign sense_data = {64{wordline[0]}};  // Simple stub that keeps logic alive
-    assign precharge_en = precharge_enable;
-`endif
+    memory_array_stub mem_stub (
+        .clk(clk),
+        .rst_n(rst_n),
+        .wordline(wordline),
+        .bitline(bitline),
+        .bitline_bar(bitline_bar),
+        .sense_data(sense_data),
+        .precharge_en(precharge_enable)
+    );
 
 endmodule
 

@@ -52,7 +52,8 @@ VERILOG_SOURCES ?= $(SRC_DIR)/sram_utils.v \
                    $(SRC_DIR)/row_decoder.v \
                    $(SRC_DIR)/column_decoder.v \
                    $(SRC_DIR)/column_mux.v \
-                   $(SRC_DIR)/write_driver.v
+                   $(SRC_DIR)/write_driver.v \
+                   $(SRC_DIR)/memory_array_stub.v
 
 else
 
