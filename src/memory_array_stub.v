@@ -67,17 +67,22 @@ module memory_array_stub (
     // Row Selection Logic (One-Hot to Binary)
     // ==========================================================================
     // Decode which row is active based on wordline
+    // Using a function to avoid synthesis warnings about latches
     
-    reg [5:0] active_row;
-    
-    always @(*) begin
-        active_row = 6'b0;
-        // Priority encoder
-        for (i = 0; i < 64; i = i + 1) begin
-            if (wordline[i])
-                active_row = i[5:0];
+    function [5:0] encode_wordline;
+        input [63:0] wl;
+        integer j;
+        begin
+            encode_wordline = 6'b0;
+            for (j = 0; j < 64; j = j + 1) begin
+                if (wl[j])
+                    encode_wordline = j[5:0];
+            end
         end
-    end
+    endfunction
+    
+    wire [5:0] active_row;
+    assign active_row = encode_wordline(wordline);
     
     // ==========================================================================
     // Write Logic - Updates memory based on bitline values  
