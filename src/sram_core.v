@@ -147,16 +147,8 @@ module sram_core (
     );
     
     // ==========================================================================
-    // Memory Array Stub (Both Simulation and Synthesis)
+    // Memory Array Stub
     // ==========================================================================
-    // This module serves dual purposes:
-    // 1. In SIMULATION: Provides functional memory for testing
-    // 2. In SYNTHESIS: Creates physical placeholder (~4096 FFs) for layout
-    //
-    // The stub reserves space and organizes connections (wordlines, bitlines)
-    // at predictable locations for easy integration with analog blocks in Magic.
-    //
-    // ** DELETE THIS MODULE IN MAGIC BEFORE CONNECTING REAL ANALOG ARRAY **
     
     memory_array_stub mem_stub (
         .clk(clk),
