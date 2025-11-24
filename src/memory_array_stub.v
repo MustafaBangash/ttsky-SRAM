@@ -42,19 +42,16 @@ module memory_array_stub (
 );
 
     // ==========================================================================
-    // Memory Array - MINIMAL STUB (64 rows × 4 cols × 4 bits = 1024 bits)
+    // Memory Array - MINIMAL STUB (64 rows × 4 nibbles = 1024 bits)
     // ==========================================================================
     // This is a MINIMAL placeholder to keep connections organized.
     // The actual 64×64 analog array will be manually placed in Magic.
     // 
     // This small stub (1024 bits vs 4096 bits = 4x smaller):
-    // - Prevents optimization of control logic and drivers
     // - Shows connection organization
-    // - Fits within TinyTapeout tile area constraints  
-    // - Stores first 4 nibbles (16 bits) per row
+    // - Stores FOUR nibbles per row (maps 16 columns to 4 slots)
+    // - NO synthesis attributes to allow maximum optimization
     // 
-    (* keep = "true" *)
-    (* dont_touch = "true" *)
     reg [15:0] memory [0:63];  // 64 rows, each stores 4 nibbles (16 bits)
     
     integer i;
@@ -92,7 +89,7 @@ module memory_array_stub (
     // ==========================================================================
     // Write Logic - Updates memory based on bitline values  
     // ==========================================================================
-    // Maps all 16 columns to 4 storage slots using modulo 4
+    // Maps 16 columns to 4 nibble slots using column[1:0]
     
     function [3:0] encode_colselect;
         input [15:0] cs;
@@ -107,10 +104,10 @@ module memory_array_stub (
     endfunction
     
     wire [3:0] col_index;
-    wire [1:0] storage_col;  // Which of 4 slots (col % 4)
+    wire [1:0] storage_slot;  // Which of 4 slots (col[1:0])
     
     assign col_index = encode_colselect(col_select);
-    assign storage_col = col_index[1:0];
+    assign storage_slot = col_index[1:0];  // Maps 16 cols to 4 slots
     
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -118,16 +115,16 @@ module memory_array_stub (
                 memory[i] <= 16'h0;
             end
         end else if (write_enable && |wordline && |col_select) begin
-            // Store to mapped column slot (col_index % 4)
-            memory[active_row][storage_col*4 +: 4] <= {bitline[col_index*4+3], bitline[col_index*4+2], 
-                                                        bitline[col_index*4+1], bitline[col_index*4+0]};
+            // Store to one of four nibble slots based on column[1:0]
+            memory[active_row][storage_slot*4 +: 4] <= {bitline[col_index*4+3], bitline[col_index*4+2], 
+                                                         bitline[col_index*4+1], bitline[col_index*4+0]};
         end
     end
     
     // ==========================================================================
     // Read Logic - Drives sense_data with memory contents
     // ==========================================================================
-    // Replicate the 16-bit word across all 4 positions (4 × 16 bits = 64 bits)
+    // Replicate the 16-bit value across all 4 positions (4 × 16 bits = 64 bits)
     
     assign sense_data = {4{memory[active_row]}};
     
@@ -135,17 +132,10 @@ module memory_array_stub (
     // Precharge Monitoring (keeps signal connected)
     // ==========================================================================
     // Monitor control signals to prevent optimization of connections
+    // NO synthesis attributes - allow optimizer to remove if truly unused
     
-    (* keep = "true" *)
     wire precharge_monitored = precharge_en;
-    
-    // Monitor complementary bitlines to keep write driver connections
-    // (only monitor first 4 bits as representative sample)
-    (* keep = "true" *)
     wire [3:0] blb_monitored = bitline_bar[3:0];
-    
-    // Monitor representative bitlines from rest of array to keep routing
-    (* keep = "true" *)
     wire bitline_sample = |bitline[63:4] | |bitline_bar[63:4] | |col_select[15:1] | |wordline[63:4];
 
 endmodule
