@@ -42,14 +42,20 @@ module memory_array_stub (
 );
 
     // ==========================================================================
-    // Memory Array - 64 rows × 64 columns = 4096 bits
+    // Memory Array - MINIMAL STUB (64 rows × 4 cols × 4 bits = 1024 bits)
     // ==========================================================================
-    // This creates a physical block of flip-flops that reserves space
-    // Use synthesis attributes to prevent optimization
-    
+    // This is a MINIMAL placeholder to keep connections organized.
+    // The actual 64×64 analog array will be manually placed in Magic.
+    // 
+    // This small stub (1024 bits vs 4096 bits = 4x smaller):
+    // - Prevents optimization of control logic and drivers
+    // - Shows connection organization
+    // - Fits within TinyTapeout tile area constraints  
+    // - Stores first 4 nibbles (16 bits) per row
+    // 
     (* keep = "true" *)
     (* dont_touch = "true" *)
-    reg [63:0] memory [0:63];
+    reg [15:0] memory [0:63];  // 64 rows, each stores 4 nibbles (16 bits)
     
     integer i;
     
@@ -59,15 +65,14 @@ module memory_array_stub (
     
     initial begin
         for (i = 0; i < 64; i = i + 1) begin
-            memory[i] = 64'h0;
+            memory[i] = 16'h0;
         end
     end
     
     // ==========================================================================
     // Row Selection Logic (One-Hot to Binary)
     // ==========================================================================
-    // Decode which row is active based on wordline
-    // Using a function to avoid synthesis warnings about latches
+    // Convert one-hot wordline to binary row address
     
     function [5:0] encode_wordline;
         input [63:0] wl;
@@ -87,48 +92,57 @@ module memory_array_stub (
     // ==========================================================================
     // Write Logic - Updates memory based on bitline values  
     // ==========================================================================
-    // Only writes selected columns (avoids high-Z check that doesn't synthesize)
+    // Maps all 16 columns to 4 storage slots using modulo 4
+    
+    reg [3:0] col_index;
+    reg [1:0] storage_col;  // Which of 4 slots (col % 4)
+    
+    always @(*) begin
+        // Find which column group is selected (priority encoder)
+        col_index = 4'd0;
+        for (i = 0; i < 16; i = i + 1) begin
+            if (col_select[i])
+                col_index = i[3:0];
+        end
+        // Map to one of 4 storage slots
+        storage_col = col_index[1:0];
+    end
     
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 64; i = i + 1) begin
-                memory[i] <= 64'h0;
+                memory[i] <= 16'h0;
             end
-        end else if (write_enable && |wordline) begin
-            // Write only to selected columns (4 bits per word)
-            // col_select is one-hot indicating which of 16 words is selected
-            for (i = 0; i < 16; i = i + 1) begin
-                if (col_select[i]) begin
-                    // Write 4 bits for this word (columns are interleaved)
-                    memory[active_row][i*4 + 0] <= bitline[i*4 + 0];
-                    memory[active_row][i*4 + 1] <= bitline[i*4 + 1];
-                    memory[active_row][i*4 + 2] <= bitline[i*4 + 2];
-                    memory[active_row][i*4 + 3] <= bitline[i*4 + 3];
-                end
-            end
+        end else if (write_enable && |wordline && |col_select) begin
+            // Store to mapped column slot (col_index % 4)
+            memory[active_row][storage_col*4 +: 4] <= {bitline[col_index*4+3], bitline[col_index*4+2], 
+                                                        bitline[col_index*4+1], bitline[col_index*4+0]};
         end
     end
     
     // ==========================================================================
     // Read Logic - Drives sense_data with memory contents
     // ==========================================================================
-    // Always drive output (no high-Z) to prevent optimization
+    // Replicate the 16-bit word across all 4 positions (4 × 16 bits = 64 bits)
     
-    assign sense_data = memory[active_row];
+    assign sense_data = {4{memory[active_row]}};
     
     // ==========================================================================
     // Precharge Monitoring (keeps signal connected)
     // ==========================================================================
-    // Even though we don't functionally use precharge_en in this stub,
-    // we need to reference it so the connection isn't optimized away
+    // Monitor control signals to prevent optimization of connections
     
     (* keep = "true" *)
     wire precharge_monitored = precharge_en;
     
-    // Tie unused complementary bitlines into the logic to prevent optimization
-    // This ensures all 128 bitline connections are preserved
+    // Monitor complementary bitlines to keep write driver connections
+    // (only monitor first 4 bits as representative sample)
     (* keep = "true" *)
-    wire [63:0] blb_monitored = bitline_bar;
+    wire [3:0] blb_monitored = bitline_bar[3:0];
+    
+    // Monitor representative bitlines from rest of array to keep routing
+    (* keep = "true" *)
+    wire bitline_sample = |bitline[63:4] | |bitline_bar[63:4] | |col_select[15:1] | |wordline[63:4];
 
 endmodule
 
