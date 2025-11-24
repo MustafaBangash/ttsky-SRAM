@@ -103,13 +103,13 @@ module memory_array_stub (
         
         genvar row, col;
         
-        // Create 64×16 = 1024 dummy buffer chains
+        // Create 64×8 = 512 dummy buffer chains (reduced to fit area)
         // Each "cell" is just a few buffers to create physical presence
-        wire [63:0] dummy_cell [0:15];
+        wire [63:0] dummy_cell [0:7];
         
         generate
             for (row = 0; row < 64; row = row + 1) begin : row_gen
-                for (col = 0; col < 16; col = col + 1) begin : col_gen
+                for (col = 0; col < 8; col = col + 1) begin : col_gen
                     // Dummy cell: AND the wordline with bitline and column select
                     // This creates a small physical gate tied to all connections
                     (* keep = "true" *)
@@ -133,15 +133,15 @@ module memory_array_stub (
         
         // Output: OR together dummy cells to create sense data
         // This ensures the entire chain stays connected
-        wire [15:0] col_outputs;
+        wire [7:0] col_outputs;
         generate
-            for (col = 0; col < 16; col = col + 1) begin : output_gen
+            for (col = 0; col < 8; col = col + 1) begin : output_gen
                 assign col_outputs[col] = |dummy_cell[col];
             end
         endgenerate
         
         // Replicate to fill 64-bit output
-        assign sense_data = {4{col_outputs}};
+        assign sense_data = {8{col_outputs}};
         
         // Tie unused signals to prevent optimization
         wire unused = precharge_en & |bitline_bar & rst_n & clk;
