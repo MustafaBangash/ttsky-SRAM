@@ -94,19 +94,23 @@ module memory_array_stub (
     // ==========================================================================
     // Maps all 16 columns to 4 storage slots using modulo 4
     
-    reg [3:0] col_index;
-    reg [1:0] storage_col;  // Which of 4 slots (col % 4)
-    
-    always @(*) begin
-        // Find which column group is selected (priority encoder)
-        col_index = 4'd0;
-        for (i = 0; i < 16; i = i + 1) begin
-            if (col_select[i])
-                col_index = i[3:0];
+    function [3:0] encode_colselect;
+        input [15:0] cs;
+        integer j;
+        begin
+            encode_colselect = 4'd0;
+            for (j = 0; j < 16; j = j + 1) begin
+                if (cs[j])
+                    encode_colselect = j[3:0];
+            end
         end
-        // Map to one of 4 storage slots
-        storage_col = col_index[1:0];
-    end
+    endfunction
+    
+    wire [3:0] col_index;
+    wire [1:0] storage_col;  // Which of 4 slots (col % 4)
+    
+    assign col_index = encode_colselect(col_select);
+    assign storage_col = col_index[1:0];
     
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
