@@ -26,7 +26,6 @@ Output: 4-bit word (selected via column mux)
 - **Interface**:
   - Input: `addr[5:0]`, `enable`
   - Output: `row_select[63:0]` (one-hot)
-- **Test**: `make COMPONENT=row_decoder`
 
 ### 2. Column Decoder (`column_decoder.v`)
 - **Function**: Decodes 4-bit address to select 1 of 16 words
@@ -37,7 +36,6 @@ Output: 4-bit word (selected via column mux)
 - **Interface**:
   - Input: `addr[3:0]`, `enable`
   - Output: `col_select[15:0]` (one-hot)
-- **Test**: `make COMPONENT=column_decoder`
 
 ### 3. Column Mux (`column_mux.v`)
 - **Function**: Selects 4-bit word from 64 sense amplifier outputs
@@ -53,49 +51,6 @@ Output: 4-bit word (selected via column mux)
 - **Interface**:
   - Input: `sense_data[63:0]` (from 64 sense amps), `col_select[15:0]`
   - Output: `data_out[3:0]`
-- **Test**: `make COMPONENT=column_mux`
-
-## Buffer Chains
-
-Buffer chains are used **only** for driving long analog lines with significant capacitive load:
-
-### Wordline Drivers (Row Decoder → Wordlines)
-```
-row_decoder → [INV] → [INV] → wordline[63:0]
-```
-Each wordline connects to 64 SRAM cells — needs strong drive.
-
-### Bitline Drivers (Write Drivers → Bitlines)
-```
-write_logic → [TRI-STATE BUF] → bitline[63:0], bitline_bar[63:0]
-```
-Each bitline connects to 64 SRAM cells. In RTL, this is a pass-through to preserve tri-state (high-Z) behavior. In real silicon, this would be a sized tri-state buffer.
-
-### No Buffers Needed
-- **Column select lines**: Drive only digital gates (column mux, write driver logic) — short wires, no buffer needed
-
-## Testing
-
-Each component has:
-1. **Verilog module** (`src/*.v`)
-2. **Testbench wrapper** (`test/tb_*.v`)
-3. **Cocotb test** (`test/test_*.py`)
-
-### Run Tests
-```bash
-cd test
-
-# Test individual components
-make COMPONENT=row_decoder
-make COMPONENT=column_decoder
-make COMPONENT=column_mux
-```
-
-### View Waveforms
-VCD files are generated in `test/waveforms/`. To view:
-- **VS Code**: Click on any `.vcd` file with the [Surfer](https://marketplace.visualstudio.com/items?itemName=surfer-project.surfer) extension installed
-- **GTKWave**: `gtkwave test/waveforms/tb.vcd`
-- **Other**: Any VCD-compatible waveform viewer
 
 ### 4. Write Driver (`write_driver.v`)
 - **Function**: Drive data onto bitlines during write operations
@@ -112,7 +67,6 @@ VCD files are generated in `test/waveforms/`. To view:
 - **Operation**:
   - Each column driven by one data bit when its word is selected
   - Column i: drives `data_in[i%4]` and complement to BL/BL̄
-- **Test**: `make COMPONENT=write_driver`
 
 ### 5. Control FSM (`sram_control.v`)
 - **Function**: Coordinate read/write operations with 3-cycle timing
@@ -146,20 +100,7 @@ VCD files are generated in `test/waveforms/`. To view:
 - **wordline_driver**: 2-stage inverter buffer for row decoder → wordlines (strong drive)
 - **bitline_driver**: Tri-state buffer placeholder for write drivers → bitlines (pass-through in RTL to preserve high-Z behavior; would be sized tri-state buffer in real silicon)
 
-## Test Results
-
-✅ **Component Tests:**
-- Row Decoder: PASS (5/5 tests)
-- Column Decoder: PASS (5/5 tests)
-- Column Mux: PASS (5/5 tests)
-- Write Driver: PASS (6/6 tests)
-
-✅ **Integration Test:** PASS
-- Write operations: 5 addresses tested
-- Read operations: All data verified
-- Overwrite: Verified
-- Back-to-back operations: Verified
-- **Total: 14 operations, 100% success**
+---
 
 ## Operation Timing
 
@@ -179,6 +120,8 @@ The 3-cycle design provides robust margins for analog operation:
 - **DEVELOP**: Full 20ns for cell to create ΔV on bitlines (process-dependent)
 - **SENSE**: Full 20ns for sense amp to resolve and stabilize output
 
+---
+
 ## TinyTapeout Integration
 
 **Pin Mapping:**
@@ -197,3 +140,53 @@ The 3-cycle design provides robust margins for analog operation:
 
 **Note**: For simulation, a behavioral memory model (`sram_array_stub`) is included in `project.v`. For tapeout, replace with actual analog memory array, sense amps, and P/EQ circuitry.
 
+---
+
+## Buffer Chains
+
+Buffer chains are used **only** for driving long analog lines with significant capacitive load:
+
+### Wordline Drivers (Row Decoder → Wordlines)
+```
+row_decoder → [INV] → [INV] → wordline[63:0]
+```
+Each wordline connects to 64 SRAM cells — needs strong drive.
+
+### Bitline Drivers (Write Drivers → Bitlines)
+```
+write_logic → [TRI-STATE BUF] → bitline[63:0], bitline_bar[63:0]
+```
+Each bitline connects to 64 SRAM cells. In RTL, this is a pass-through to preserve tri-state (high-Z) behavior. In real silicon, this would be a sized tri-state buffer.
+
+### No Buffers Needed
+- **Column select lines**: Drive only digital gates (column mux, write driver logic) — short wires, no buffer needed
+
+---
+
+## Testing
+
+Each component has:
+1. **Verilog module** (`src/*.v`)
+2. **Testbench wrapper** (`test/testbenches/tb_*.v`)
+3. **Cocotb test** (`test/tests/test_*.py`)
+
+### Run Tests
+```bash
+cd test
+
+# Integration test
+make
+
+# Test individual components
+make COMPONENT=row_decoder
+make COMPONENT=column_decoder
+make COMPONENT=column_mux
+make COMPONENT=write_driver
+make COMPONENT=control_fsm
+```
+
+### View Waveforms
+VCD files are generated in `test/waveforms/`. To view:
+- **VS Code**: Click on any `.vcd` file with the [Surfer](https://marketplace.visualstudio.com/items?itemName=surfer-project.surfer) extension installed
+- **GTKWave**: `gtkwave test/waveforms/tb.vcd`
+- **Other**: Any VCD-compatible waveform viewer
