@@ -1,0 +1,8 @@
+{
+  "DESIGN_NAME": "control_decoder",
+  "VERILOG_FILES": [
+    "verilog/control_decoder.v"
+  ]
+}
+
+

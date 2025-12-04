@@ -1,0 +1,7 @@
+{
+  "DESIGN_NAME": "sram_control",
+  "VERILOG_FILES": [
+    "../sram_control.v"
+  ]
+}
+

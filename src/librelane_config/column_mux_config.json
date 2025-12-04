@@ -1,0 +1,7 @@
+{
+  "DESIGN_NAME": "column_mux",
+  "VERILOG_FILES": [
+    "../column_mux.v"
+  ]
+}
+

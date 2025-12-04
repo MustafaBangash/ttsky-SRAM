@@ -1,0 +1,8 @@
+{
+  "DESIGN_NAME": "write_driver",
+  "VERILOG_FILES": [
+    "../write_driver.v",
+    "../sram_utils.v"
+  ]
+}
+

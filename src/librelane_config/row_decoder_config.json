@@ -1,0 +1,8 @@
+{
+  "DESIGN_NAME": "row_decoder",
+  "VERILOG_FILES": [
+    "../row_decoder.v",
+    "../sram_utils.v"
+  ]
+}
+

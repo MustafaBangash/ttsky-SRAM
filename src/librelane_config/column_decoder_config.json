@@ -1,0 +1,7 @@
+{
+  "DESIGN_NAME": "column_decoder",
+  "VERILOG_FILES": [
+    "../column_decoder.v"
+  ]
+}
+
