@@ -3,6 +3,10 @@
   "VERILOG_FILES": [
     "../write_driver.v",
     "../sram_utils.v"
-  ]
+  ],
+
+  "FP_SIZING": "absolute",
+  "DIE_AREA": "0 0 510 510",
+  "CORE_AREA": "10 10 500 500"
 }
 

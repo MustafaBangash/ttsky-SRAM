@@ -2,6 +2,10 @@
   "DESIGN_NAME": "column_mux",
   "VERILOG_FILES": [
     "../column_mux.v"
-  ]
+  ],
+
+  "FP_SIZING": "absolute",
+  "DIE_AREA": "0 0 286 286",
+  "CORE_AREA": "10 10 276 276"
 }
 

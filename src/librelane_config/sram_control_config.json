@@ -2,6 +2,9 @@
   "DESIGN_NAME": "sram_control",
   "VERILOG_FILES": [
     "../sram_control.v"
-  ]
-}
+  ],
 
+  "FP_SIZING": "absolute",
+  "DIE_AREA": "0 0 350 350",
+  "CORE_AREA": "10 10 340 340"
+}
