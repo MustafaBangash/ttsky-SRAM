@@ -61,6 +61,10 @@ module sram_control (
     
     reg [1:0] state, next_state;
     
+    // Latched read_not_write signal - prevents mid-operation changes
+    // from corrupting data by switching between read/write modes
+    reg read_not_write_latched;
+    
     // ==========================================================================
     // State Register
     // ==========================================================================
@@ -70,6 +74,24 @@ module sram_control (
             state <= IDLE;
         end else begin
             state <= next_state;
+        end
+    end
+    
+    // ==========================================================================
+    // Latch read_not_write at operation start
+    // ==========================================================================
+    // Captures the operation type when entering PRECHARGE state.
+    // This prevents mid-operation changes from corrupting data.
+    // Must capture for both:
+    //   - IDLE → PRECHARGE (first operation)
+    //   - SENSE → PRECHARGE (back-to-back operations)
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            read_not_write_latched <= 1'b1;  // Default to read (safer)
+        end else if (next_state == PRECHARGE) begin
+            // Latch when about to enter PRECHARGE (start of any operation)
+            read_not_write_latched <= read_not_write;
         end
     end
     
@@ -148,7 +170,8 @@ module sram_control (
                 col_enable = 1'b1;
                 
                 // NOW activate read or write path
-                if (read_not_write) begin
+                // Use LATCHED signal to prevent mid-operation corruption
+                if (read_not_write_latched) begin
                     read_enable = 1'b1;   // Sense amp fires, data valid
                 end else begin
                     write_enable = 1'b1;  // Write drivers active
