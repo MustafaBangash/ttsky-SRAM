@@ -4,48 +4,60 @@
 `default_nettype none
 
 // =============================================================================
-// SRAM Control FSM
+// SRAM Control FSM - Robust 3-Cycle Design
 // =============================================================================
 //
-// 2-Cycle Operation @ 50MHz (20ns per cycle, 40ns total):
+// 3-Cycle Operation @ 50MHz (20ns per cycle, 60ns total per operation):
 //
-// READ:
-//   Cycle 1: Row decode + precharge (handled by P/EQ)
-//   Cycle 2: Sense amplify + column mux → data_out valid
+// IDLE:
+//   Precharge ON, Wordline OFF
+//   Ready for new operation
 //
-// WRITE:
-//   Cycle 1: Row decode + column decode
-//   Cycle 2: Write drivers active → cells written
+// PRECHARGE:
+//   Precharge ON, Wordline OFF
+//   Bitlines equalize to VDD (~5-10ns needed)
 //
-// FSM States:
-//   IDLE   : Waiting for enable
-//   CYCLE1 : First cycle (row access)
-//   CYCLE2 : Second cycle (column access)
+// DEVELOP:
+//   Precharge OFF, Wordline ON
+//   Cells develop ΔV on bitlines (~10-15ns needed)
+//   Sense amps NOT active yet - let voltage stabilize
 //
-// Timing:
-//   - All transitions on rising edge only
-//   - READY signal indicates operation complete
-//   - New operation can start after READY
+// SENSE (for READ) / WRITE:
+//   Precharge OFF, Wordline ON
+//   READ:  Sense amp fires, data valid at output
+//   WRITE: Write drivers active, cells written
+//
+// This conservative timing ensures reliable operation even with:
+//   - Large bitline capacitance
+//   - Weak cells
+//   - Slow process corners
+//
+// State Diagram:
+//   IDLE ──(enable)──> PRECHARGE ──> DEVELOP ──> SENSE/WRITE ──┐
+//     ▲                                            │           │
+//     │                    (enable) ───────────────┘           │
+//     └─────────────────(!enable)──────────────────────────────┘
 
 module sram_control (
     input  wire       clk,
     input  wire       rst_n,
-    input  wire       enable,        // Chip select
+    input  wire       enable,         // Chip select
     input  wire       read_not_write, // 1=read, 0=write
     
     // Internal control outputs
-    output reg        row_enable,     // Enable row decoder
+    output reg        row_enable,     // Enable row decoder (drives wordline)
     output reg        col_enable,     // Enable column decoder
     output reg        write_enable,   // Enable write drivers
-    output reg        read_enable,    // Enable column mux (read path)
+    output reg        read_enable,    // Enable sense amps + column mux
     output reg        precharge_enable, // Enable P/EQ (precharge/equalization)
     output reg        ready           // Operation complete
 );
 
-    // FSM states
-    localparam IDLE   = 2'b00;
-    localparam CYCLE1 = 2'b01;
-    localparam CYCLE2 = 2'b10;
+    // FSM states (need 2 bits for 4 states)
+    localparam IDLE      = 2'b00;
+    localparam PRECHARGE = 2'b01;
+    localparam DEVELOP   = 2'b10;
+    localparam SENSE     = 2'b11;  // Also used for WRITE
     
     reg [1:0] state, next_state;
     
@@ -69,20 +81,24 @@ module sram_control (
         case (state)
             IDLE: begin
                 if (enable)
-                    next_state = CYCLE1;
+                    next_state = PRECHARGE;
                 else
                     next_state = IDLE;
             end
             
-            CYCLE1: begin
-                next_state = CYCLE2;
+            PRECHARGE: begin
+                next_state = DEVELOP;
             end
             
-            CYCLE2: begin
+            DEVELOP: begin
+                next_state = SENSE;
+            end
+            
+            SENSE: begin
                 if (enable)
-                    next_state = CYCLE1;  // Back-to-back operations
+                    next_state = PRECHARGE;  // Back-to-back: precharge again
                 else
-                    next_state = IDLE;
+                    next_state = IDLE;       // Done, return to idle
             end
             
             default: next_state = IDLE;
@@ -94,7 +110,7 @@ module sram_control (
     // ==========================================================================
     
     always @(*) begin
-        // Default values
+        // Default values - everything OFF
         row_enable       = 1'b0;
         col_enable       = 1'b0;
         write_enable     = 1'b0;
@@ -104,31 +120,41 @@ module sram_control (
         
         case (state)
             IDLE: begin
-                precharge_enable = 1'b1;  // Precharge bitlines when idle
-                ready = 1'b1;             // Ready for new operation
+                // Bitlines stay precharged, ready for operation
+                precharge_enable = 1'b1;
+                ready = 1'b1;
             end
             
-            CYCLE1: begin
-                precharge_enable = 1'b1;  // Precharge during first half of cycle
-                // Activate row decoder (both read and write)
-                row_enable = 1'b1;
-                col_enable = 1'b1;  // Decode column address too
+            PRECHARGE: begin
+                // Precharge ON, wordline OFF
+                // Bitlines equalize to VDD, cells disconnected
+                precharge_enable = 1'b1;
+                col_enable = 1'b1;  // Start column decode (has time to settle)
             end
             
-            CYCLE2: begin
-                precharge_enable = 1'b0;  // Turn off precharge for sensing/writing
-                // Keep row/col active
+            DEVELOP: begin
+                // Precharge OFF, wordline ON
+                // Let ΔV develop on bitlines - don't sense yet!
+                precharge_enable = 1'b0;
+                row_enable = 1'b1;  // Wordline goes HIGH
+                col_enable = 1'b1;  // Column already decoded
+                // read_enable = 0, write_enable = 0 (wait for voltage to stabilize)
+            end
+            
+            SENSE: begin
+                // Precharge OFF, wordline ON, sense/write active
+                precharge_enable = 1'b0;
                 row_enable = 1'b1;
                 col_enable = 1'b1;
                 
-                // Activate read or write path
+                // NOW activate read or write path
                 if (read_not_write) begin
-                    read_enable = 1'b1;   // Column mux active
+                    read_enable = 1'b1;   // Sense amp fires, data valid
                 end else begin
                     write_enable = 1'b1;  // Write drivers active
                 end
                 
-                ready = 1'b1;  // Data valid at end of CYCLE2
+                ready = 1'b1;  // Operation complete
             end
         endcase
     end
@@ -136,4 +162,3 @@ module sram_control (
 endmodule
 
 `default_nettype wire
-
