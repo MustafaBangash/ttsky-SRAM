@@ -17,9 +17,11 @@ module tb_control_decoder ();
 
     // Dump waves
     initial begin
-        $dumpfile("tb_control_decoder.vcd");
+        $dumpfile("waveforms/tb_control_decoder.vcd");
         $dumpvars(0, tb_control_decoder);
     end
 
 endmodule
+
+`default_nettype wire
 

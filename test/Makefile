@@ -40,6 +40,13 @@ ifeq ($(COMPONENT),write_driver)
 	SIM_BUILD = sim_build/write_driver
 endif
 
+ifeq ($(COMPONENT),control_fsm)
+	VERILOG_SOURCES = $(SRC_DIR)/sram_control.v $(PWD)/testbenches/tb_control_fsm.v
+	TOPLEVEL = tb_control_fsm
+	COCOTB_TEST_MODULES = tests.test_control_fsm
+	SIM_BUILD = sim_build/control_fsm
+endif
+
 ifneq ($(GATES),yes)
 
 # RTL simulation:
@@ -111,6 +118,12 @@ test_all:
 	@echo "=========================================="
 	@$(MAKE) clean
 	@$(MAKE) COMPONENT=write_driver
+	@echo ""
+	@echo "=========================================="
+	@echo "Testing Control FSM..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE) COMPONENT=control_fsm
 	@echo ""
 	@echo "=========================================="
 	@echo "✅ ALL TESTS COMPLETE"
