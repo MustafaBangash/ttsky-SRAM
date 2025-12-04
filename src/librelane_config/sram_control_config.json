@@ -4,7 +4,7 @@
     "../sram_control.v"
   ],
 
-  "FP_SIZING": "absolute",
-  "DIE_AREA": "0 0 350 350",
-  "CORE_AREA": "10 10 340 340"
+  "FP_CORE_UTIL": 25,
+  "FP_ASPECT_RATIO": 1.0,
+  "FP_MARGIN": 2
 }
