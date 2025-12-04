@@ -33,40 +33,46 @@ Output: 4-bit word (selected via column mux)
 - **Architecture**:
   - Two 2:4 predecoders
   - 4×4 AND array
-  - 2-stage inverter buffer chains for driving column select lines
+  - No buffer chains (outputs drive digital logic only, not long analog lines)
 - **Interface**:
   - Input: `addr[3:0]`, `enable`
   - Output: `col_select[15:0]` (one-hot)
 - **Test**: `make COMPONENT=column_decoder`
 
 ### 3. Column Mux (`column_mux.v`)
-- **Function**: Selects 4-bit word from 64 columns based on column decoder output
+- **Function**: Selects 4-bit word from 64 sense amplifier outputs
 - **Architecture**:
-  - **4 parallel 16:1 muxes** (one per bit position)
+  - **64 sense amplifiers** (one per BL/BL̄ pair) at bottom of array
+  - **4 parallel 16:1 muxes** (one per bit position) select from sense amp outputs
   - **Interleaved column organization**:
     - Bit[0]: columns 0, 4, 8, ..., 60
     - Bit[1]: columns 1, 5, 9, ..., 61
     - Bit[2]: columns 2, 6, 10, ..., 62
     - Bit[3]: columns 3, 7, 11, ..., 63
-  - Each mux feeds a separate sense amplifier
   - OR-based mux structure
 - **Interface**:
-  - Input: `col_data[63:0]`, `col_select[15:0]`
+  - Input: `sense_data[63:0]` (from 64 sense amps), `col_select[15:0]`
   - Output: `data_out[3:0]`
 - **Test**: `make COMPONENT=column_mux`
 
 ## Buffer Chains
 
-### Wordline Drivers
-Each decoder output drives a wordline through a 2-stage inverter chain:
-```
-signal → [INV] → [INV] → buffered_output
-```
+Buffer chains are used **only** for driving long analog lines with significant capacitive load:
 
-**Purpose**: 
-- Provides strong drive capability for long wordlines
-- 2 stages = non-inverting (maintains signal polarity)
-- Increases slew rate and reduces delay
+### Wordline Drivers (Row Decoder → Wordlines)
+```
+row_decoder → [INV] → [INV] → wordline[63:0]
+```
+Each wordline connects to 64 SRAM cells — needs strong drive.
+
+### Bitline Drivers (Write Drivers → Bitlines)
+```
+write_logic → [TRI-STATE BUF] → bitline[63:0], bitline_bar[63:0]
+```
+Each bitline connects to 64 SRAM cells. In RTL, this is a pass-through to preserve tri-state (high-Z) behavior. In real silicon, this would be a sized tri-state buffer.
+
+### No Buffers Needed
+- **Column select lines**: Drive only digital gates (column mux, write driver logic) — short wires, no buffer needed
 
 ## Testing
 
@@ -83,10 +89,13 @@ cd test
 make COMPONENT=row_decoder
 make COMPONENT=column_decoder
 make COMPONENT=column_mux
-
-# View waveforms
-gtkwave tb.vcd
 ```
+
+### View Waveforms
+VCD files are generated in `test/waveforms/`. To view:
+- **VS Code**: Click on any `.vcd` file with the [Surfer](https://marketplace.visualstudio.com/items?itemName=surfer-project.surfer) extension installed
+- **GTKWave**: `gtkwave test/waveforms/tb.vcd`
+- **Other**: Any VCD-compatible waveform viewer
 
 ### 4. Write Driver (`write_driver.v`)
 - **Function**: Drive data onto bitlines during write operations
@@ -106,18 +115,19 @@ gtkwave tb.vcd
 - **Test**: `make COMPONENT=write_driver`
 
 ### 5. Control FSM (`sram_control.v`)
-- **Function**: Coordinate read/write operations with 2-cycle timing
+- **Function**: Coordinate read/write operations with 3-cycle timing
 - **Architecture**:
-  - **3-state FSM**: IDLE, CYCLE1, CYCLE2
-  - **50MHz operation** (20ns per cycle, 40ns total per operation)
+  - **4-state FSM**: IDLE, PRECHARGE, DEVELOP, SENSE
+  - **50MHz operation** (20ns per cycle, 60ns total per operation)
   - Rising edge only (robust timing)
 - **States**:
-  - **IDLE**: Wait for enable signal, READY=1
-  - **CYCLE1**: Row decode + precharge/column decode
-  - **CYCLE2**: Sense amplify (read) or write drivers (write), READY=1
+  - **IDLE**: Wait for enable signal, precharge active, READY=1
+  - **PRECHARGE**: Bitlines equalize to VDD/2, column decode begins
+  - **DEVELOP**: Wordline rises, ΔV develops on bitlines (~20ns)
+  - **SENSE**: Sense amplify (read) or write drivers (write), READY=1
 - **Interface**:
   - Input: `clk`, `rst_n`, `enable`, `read_not_write`
-  - Output: `row_enable`, `col_enable`, `write_enable`, `read_enable`, `ready`
+  - Output: `row_enable`, `col_enable`, `write_enable`, `read_enable`, `precharge_enable`, `ready`
 
 ### 6. SRAM Core (`sram_core.v`)
 - **Function**: Top-level SRAM integration
@@ -133,8 +143,8 @@ gtkwave tb.vcd
   - Memory array signals: `wordline[63:0]`, `bitline[63:0]`, `bitline_bar[63:0]`, `sense_data[63:0]`
 
 ### 7. Shared Utilities (`sram_utils.v`)
-- **wordline_driver**: 2-stage non-inverting buffer for row/column decoders
-- **bitline_driver**: 2-stage buffer for write driver outputs
+- **wordline_driver**: 2-stage inverter buffer for row decoder → wordlines (strong drive)
+- **bitline_driver**: Tri-state buffer placeholder for write drivers → bitlines (pass-through in RTL to preserve high-Z behavior; would be sized tri-state buffer in real silicon)
 
 ## Test Results
 
@@ -153,13 +163,21 @@ gtkwave tb.vcd
 
 ## Operation Timing
 
-### Read Operation (2 cycles, 40ns total):
-1. **Cycle 1 (0-20ns)**: Row decode → activate wordline, precharge bitlines
-2. **Cycle 2 (20-40ns)**: Sense amplify → column mux → data_out valid, READY=1
+### Read Operation (3 cycles, 60ns total):
+1. **PRECHARGE (0-20ns)**: Bitlines equalize to VDD/2, column decode active
+2. **DEVELOP (20-40ns)**: Wordline rises, cell creates differential voltage on bitlines
+3. **SENSE (40-60ns)**: Sense amplifiers fire, column mux routes data_out, READY=1
 
-### Write Operation (2 cycles, 40ns total):
-1. **Cycle 1 (0-20ns)**: Row + column decode
-2. **Cycle 2 (20-40ns)**: Write drivers active → data written to cells, READY=1
+### Write Operation (3 cycles, 60ns total):
+1. **PRECHARGE (0-20ns)**: Bitlines equalize, column decode active
+2. **DEVELOP (20-40ns)**: Wordline rises, row/column fully decoded
+3. **SENSE (40-60ns)**: Write drivers force bitlines to data values, READY=1
+
+### Why 3 Cycles?
+The 3-cycle design provides robust margins for analog operation:
+- **PRECHARGE**: Full 20ns for bitline equalization (critical for sense amp accuracy)
+- **DEVELOP**: Full 20ns for cell to create ΔV on bitlines (process-dependent)
+- **SENSE**: Full 20ns for sense amp to resolve and stabilize output
 
 ## TinyTapeout Integration
 

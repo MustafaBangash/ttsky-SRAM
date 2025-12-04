@@ -35,22 +35,13 @@ module column_decoder #(
 
     // AND array: Combine predecoder outputs to generate 16 column selects
     // col_select[i] = predec_high[i/4] & predec_low[i%4]
-    wire [NUM_COLS-1:0] col_select_unbuffered;
+    // Note: No buffer chains needed - col_select drives digital logic only
+    //       (column mux and write drivers), not long analog lines
     
     genvar i;
     generate
         for (i = 0; i < NUM_COLS; i = i + 1) begin : and_array
-            assign col_select_unbuffered[i] = predec_high[i / 4] & predec_low[i % 4];
-        end
-    endgenerate
-
-    // Buffer chains for driving column select lines
-    generate
-        for (i = 0; i < NUM_COLS; i = i + 1) begin : col_drivers
-            wordline_driver col_driver (
-                .in(col_select_unbuffered[i]),
-                .out(col_select[i])
-            );
+            assign col_select[i] = predec_high[i / 4] & predec_low[i % 4];
         end
     endgenerate
 

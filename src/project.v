@@ -61,7 +61,7 @@ module tt_um_example (
     // Bidirectional pins configured as inputs only
     assign uio_out = 8'b0;
     assign uio_oe  = 8'b0;
-    
+
     // ==========================================================================
     // SRAM Core Instance
     // ==========================================================================

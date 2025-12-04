@@ -18,17 +18,22 @@ This project implements a complete single-tile SRAM module with the following ar
 - **Addressing**: 10-bit address (6 bits for row, 4 bits for column)
 
 ### Components
-1. **Row Decoder (6:64)**: Decodes upper 6 address bits using NOR-based predecoders and an AND array to select one of 64 rows
-2. **Column Decoder (4:16)**: Decodes lower 4 address bits to select one of 16 4-bit words per row
-3. **Column Multiplexer**: Four parallel 16:1 muxes (one per bit) route the selected word to the output during reads
+1. **Row Decoder (6:64)**: Decodes upper 6 address bits using predecoders and an AND array to select one of 64 rows
+2. **Column Decoder (4:16)**: Decodes lower 4 address bits using 2:4 predecoders and AND array to select one of 16 4-bit words per row
+3. **Column Multiplexer**: Four parallel 16:1 muxes (one per bit) select from 64 sense amplifier outputs to route the selected 4-bit word to the output during reads
 4. **Write Drivers**: 64 differential drivers (with 2-stage buffers) that drive BL/BL̄ pairs during writes
-5. **Control FSM**: 2-cycle state machine that coordinates all operations at 50MHz
-6. **Precharge Control**: Generates enable signal for bitline precharge/equalization circuit
+5. **Control FSM**: 3-cycle state machine (IDLE→PRECHARGE→DEVELOP→SENSE) that coordinates all operations at 50MHz and generates the precharge enable signal for the analog P/EQ circuit
 
 ### Operation
-- **Read**: Takes 2 clock cycles (40ns total). In cycle 1, the row is decoded and bitlines are precharged. In cycle 2, sense amplifiers detect the cell data and the column mux routes the selected 4-bit word to the output.
-- **Write**: Takes 2 clock cycles (40ns total). In cycle 1, row and column are decoded. In cycle 2, write drivers force the bitlines to the desired values and overwrite the selected cells.
-- **Throughput**: 25 million operations per second (50MHz ÷ 2 cycles per operation)
+- **Read**: Takes 3 clock cycles (60ns total):
+  - PRECHARGE: Bitlines equalize to VDD/2
+  - DEVELOP: Wordline rises, cell creates ΔV on bitlines
+  - SENSE: Sense amplifiers fire, column mux routes selected 4-bit word to output
+- **Write**: Takes 3 clock cycles (60ns total):
+  - PRECHARGE: Bitlines equalize
+  - DEVELOP: Wordline rises, row/column decoded
+  - SENSE: Write drivers force bitlines to desired values, overwriting cells
+- **Throughput**: 16.7 million operations per second (50MHz ÷ 3 cycles per operation)
 
 ### Design Decisions
 - **Rising-edge only timing** for robustness across process/voltage/temperature variations
@@ -60,7 +65,7 @@ The digital components interface with analog blocks (memory cell array, sense am
 2. Set the data to write on `uio_in[3:0]` (4 bits)
 3. Set `uio_in[5]` = 0 (write mode)
 4. Set `uio_in[4]` = 1 (enable)
-5. Wait 2 clock cycles (40ns at 50MHz)
+5. Wait 3 clock cycles (60ns at 50MHz)
 6. Check that `uo_out[4]` = 1 (READY)
 7. Data is now stored at the specified address
 
@@ -68,7 +73,7 @@ The digital components interface with analog blocks (memory cell array, sense am
 1. Set up the address on `ui_in[7:0]` and `uio_in[7:6]` (10 bits total)
 2. Set `uio_in[5]` = 1 (read mode)
 3. Set `uio_in[4]` = 1 (enable)
-4. Wait 2 clock cycles (40ns at 50MHz)
+4. Wait 3 clock cycles (60ns at 50MHz)
 5. Check that `uo_out[4]` = 1 (READY)
 6. Read the data from `uo_out[3:0]`
 
@@ -77,13 +82,13 @@ The digital components interface with analog blocks (memory cell array, sense am
 Write 0xA to address 0x000:
   ui_in   = 0x00
   uio_in  = 0b00_0_1_1010  (addr[9:8]=00, R/W̄=0, EN=1, data=0xA)
-  Wait 2 cycles
+  Wait 3 cycles
   Expect: uo_out[4] = 1
 
 Read from address 0x000:
   ui_in   = 0x00
   uio_in  = 0b00_1_1_0000  (addr[9:8]=00, R/W̄=1, EN=1, data=X)
-  Wait 2 cycles
+  Wait 3 cycles
   Expect: uo_out[3:0] = 0xA, uo_out[4] = 1
 ```
 
