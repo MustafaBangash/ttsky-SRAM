@@ -126,5 +126,21 @@ test_all:
 	@$(MAKE) COMPONENT=control_fsm
 	@echo ""
 	@echo "=========================================="
+	@echo "Testing Full SRAM Integration..."
+	@echo "=========================================="
+	@$(MAKE) clean
+	@$(MAKE)
+	@echo ""
+	@echo "=========================================="
 	@echo "✅ ALL TESTS COMPLETE"
 	@echo "=========================================="
+	@echo ""
+	@echo "Waveforms generated:"
+	@echo "  waveforms/tb_row_decoder.vcd"
+	@echo "  waveforms/tb_column_decoder.vcd"
+	@echo "  waveforms/tb_column_mux.vcd"
+	@echo "  waveforms/tb_write_driver.vcd"
+	@echo "  waveforms/tb_control_fsm.vcd"
+	@echo "  waveforms/tb.vcd (full integration)"
+	@echo ""
+	@echo "View with: gtkwave waveforms/<file>.vcd"
